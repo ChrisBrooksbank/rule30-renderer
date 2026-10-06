@@ -8,6 +8,7 @@ type AppState = {
   cellSize: number;
   animate: boolean;
   visibleRows: number;
+  seedMode: "centered" | "random";
   seed: Cell[];
 };
 
@@ -18,6 +19,7 @@ const state: AppState = {
   cellSize: 4,
   animate: true,
   visibleRows: 1,
+  seedMode: "centered",
   seed: centeredSeed(241),
 };
 
@@ -112,7 +114,7 @@ function normalizeOdd(value: number): number {
 
 function resizeSeed(nextColumns: number): void {
   state.columns = normalizeOdd(nextColumns);
-  state.seed = centeredSeed(state.columns);
+  state.seed = state.seedMode === "random" ? randomSeed(state.columns) : centeredSeed(state.columns);
   state.visibleRows = 1;
 }
 
@@ -220,17 +222,22 @@ controls.cellSize?.addEventListener("input", (event) => {
 
 controls.playPause?.addEventListener("click", () => {
   state.animate = !state.animate;
-  state.visibleRows = state.animate ? Math.min(state.visibleRows, state.generations) : state.generations;
+  // Pausing freezes the current frame; playing a finished render replays it.
+  if (state.animate && state.visibleRows >= state.generations) {
+    state.visibleRows = 1;
+  }
   updateLabels();
   draw();
 });
 
 controls.reset?.addEventListener("click", () => {
+  state.seedMode = "centered";
   state.seed = centeredSeed(state.columns);
   restartAnimation();
 });
 
 controls.randomSeed?.addEventListener("click", () => {
+  state.seedMode = "random";
   state.seed = randomSeed(state.columns);
   restartAnimation();
 });
