@@ -103,6 +103,7 @@ const controls = {
 
 let animationFrame = 0;
 let lastTick = 0;
+let rows: Cell[][] = [];
 
 function normalizeOdd(value: number): number {
   const rounded = Math.trunc(value);
@@ -127,16 +128,21 @@ function updateLabels(): void {
   }
 }
 
+function regenerate(): void {
+  rows = generateRows(state.rule, state.seed, state.generations);
+}
+
 function draw(): void {
-  const rows = generateRows(state.rule, state.seed, state.generations);
   const width = state.columns * state.cellSize;
   const height = state.generations * state.cellSize;
   const displayRows = Math.min(state.visibleRows, rows.length);
 
-  canvas.width = width;
-  canvas.height = height;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  }
 
   context.fillStyle = "#f5f7f2";
   context.fillRect(0, 0, width, height);
@@ -158,7 +164,7 @@ function draw(): void {
 }
 
 function tick(timestamp: number): void {
-  if (state.animate && timestamp - lastTick > 18) {
+  if (state.animate && state.visibleRows < state.generations && timestamp - lastTick > 18) {
     state.visibleRows = Math.min(state.generations, state.visibleRows + 2);
     lastTick = timestamp;
     draw();
@@ -169,15 +175,31 @@ function tick(timestamp: number): void {
 
 function restartAnimation(): void {
   state.visibleRows = state.animate ? 1 : state.generations;
+  regenerate();
   updateLabels();
   draw();
 }
 
 controls.rule?.addEventListener("input", (event) => {
   const input = event.currentTarget as HTMLInputElement;
-  state.rule = clampRule(Number(input.value));
+  // Let the field be empty mid-edit instead of snapping it to 0.
+  if (input.value.trim() === "" || !Number.isFinite(Number(input.value))) {
+    return;
+  }
+
+  const rule = clampRule(Number(input.value));
+  if (String(rule) !== input.value) {
+    input.value = String(rule);
+  }
+  if (rule !== state.rule) {
+    state.rule = rule;
+    restartAnimation();
+  }
+});
+
+controls.rule?.addEventListener("change", (event) => {
+  const input = event.currentTarget as HTMLInputElement;
   input.value = String(state.rule);
-  restartAnimation();
 });
 
 controls.columns?.addEventListener("input", (event) => {
