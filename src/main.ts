@@ -16,13 +16,13 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 
 const state: AppState = {
   rule: 30,
-  columns: 241,
-  generations: 180,
-  cellSize: 4,
+  columns: 321,
+  generations: 160,
+  cellSize: 3,
   animate: !prefersReducedMotion,
   visibleRows: 1,
   seedMode: "centered",
-  seed: centeredSeed(241),
+  seed: centeredSeed(321),
 };
 
 const app = document.querySelector<HTMLElement>("#app");
