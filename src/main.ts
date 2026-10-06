@@ -12,12 +12,14 @@ type AppState = {
   seed: Cell[];
 };
 
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const state: AppState = {
   rule: 30,
   columns: 241,
   generations: 180,
   cellSize: 4,
-  animate: true,
+  animate: !prefersReducedMotion,
   visibleRows: 1,
   seedMode: "centered",
   seed: centeredSeed(241),
@@ -63,7 +65,7 @@ app.innerHTML = `
       </div>
 
       <div class="button-row">
-        <button id="playPause" type="button">Pause</button>
+        <button id="playPause" type="button">${state.animate ? "Pause" : "Play"}</button>
         <button id="reset" type="button">Reset</button>
         <button id="randomSeed" type="button">Random Seed</button>
         <button id="export" type="button">Export PNG</button>
