@@ -8,17 +8,21 @@ type AppState = {
   cellSize: number;
   animate: boolean;
   visibleRows: number;
+  seedMode: "centered" | "random";
   seed: Cell[];
 };
 
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const state: AppState = {
   rule: 30,
-  columns: 241,
-  generations: 180,
-  cellSize: 4,
-  animate: true,
+  columns: 321,
+  generations: 160,
+  cellSize: 3,
+  animate: !prefersReducedMotion,
   visibleRows: 1,
-  seed: centeredSeed(241),
+  seedMode: "centered",
+  seed: centeredSeed(321),
 };
 
 const app = document.querySelector<HTMLElement>("#app");
@@ -61,7 +65,7 @@ app.innerHTML = `
       </div>
 
       <div class="button-row">
-        <button id="playPause" type="button">Pause</button>
+        <button id="playPause" type="button">${state.animate ? "Pause" : "Play"}</button>
         <button id="reset" type="button">Reset</button>
         <button id="randomSeed" type="button">Random Seed</button>
         <button id="export" type="button">Export PNG</button>
@@ -103,6 +107,7 @@ const controls = {
 
 let animationFrame = 0;
 let lastTick = 0;
+let rows: Cell[][] = [];
 
 function normalizeOdd(value: number): number {
   const rounded = Math.trunc(value);
@@ -111,7 +116,7 @@ function normalizeOdd(value: number): number {
 
 function resizeSeed(nextColumns: number): void {
   state.columns = normalizeOdd(nextColumns);
-  state.seed = centeredSeed(state.columns);
+  state.seed = state.seedMode === "random" ? randomSeed(state.columns) : centeredSeed(state.columns);
   state.visibleRows = 1;
 }
 
@@ -127,16 +132,21 @@ function updateLabels(): void {
   }
 }
 
+function regenerate(): void {
+  rows = generateRows(state.rule, state.seed, state.generations);
+}
+
 function draw(): void {
-  const rows = generateRows(state.rule, state.seed, state.generations);
   const width = state.columns * state.cellSize;
   const height = state.generations * state.cellSize;
   const displayRows = Math.min(state.visibleRows, rows.length);
 
-  canvas.width = width;
-  canvas.height = height;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  }
 
   context.fillStyle = "#f5f7f2";
   context.fillRect(0, 0, width, height);
@@ -158,7 +168,7 @@ function draw(): void {
 }
 
 function tick(timestamp: number): void {
-  if (state.animate && timestamp - lastTick > 18) {
+  if (state.animate && state.visibleRows < state.generations && timestamp - lastTick > 18) {
     state.visibleRows = Math.min(state.generations, state.visibleRows + 2);
     lastTick = timestamp;
     draw();
@@ -169,15 +179,31 @@ function tick(timestamp: number): void {
 
 function restartAnimation(): void {
   state.visibleRows = state.animate ? 1 : state.generations;
+  regenerate();
   updateLabels();
   draw();
 }
 
 controls.rule?.addEventListener("input", (event) => {
   const input = event.currentTarget as HTMLInputElement;
-  state.rule = clampRule(Number(input.value));
+  // Let the field be empty mid-edit instead of snapping it to 0.
+  if (input.value.trim() === "" || !Number.isFinite(Number(input.value))) {
+    return;
+  }
+
+  const rule = clampRule(Number(input.value));
+  if (String(rule) !== input.value) {
+    input.value = String(rule);
+  }
+  if (rule !== state.rule) {
+    state.rule = rule;
+    restartAnimation();
+  }
+});
+
+controls.rule?.addEventListener("change", (event) => {
+  const input = event.currentTarget as HTMLInputElement;
   input.value = String(state.rule);
-  restartAnimation();
 });
 
 controls.columns?.addEventListener("input", (event) => {
@@ -198,17 +224,22 @@ controls.cellSize?.addEventListener("input", (event) => {
 
 controls.playPause?.addEventListener("click", () => {
   state.animate = !state.animate;
-  state.visibleRows = state.animate ? Math.min(state.visibleRows, state.generations) : state.generations;
+  // Pausing freezes the current frame; playing a finished render replays it.
+  if (state.animate && state.visibleRows >= state.generations) {
+    state.visibleRows = 1;
+  }
   updateLabels();
   draw();
 });
 
 controls.reset?.addEventListener("click", () => {
+  state.seedMode = "centered";
   state.seed = centeredSeed(state.columns);
   restartAnimation();
 });
 
 controls.randomSeed?.addEventListener("click", () => {
+  state.seedMode = "random";
   state.seed = randomSeed(state.columns);
   restartAnimation();
 });

@@ -14,10 +14,12 @@ export function nextCell(rule: number, left: Cell, center: Cell, right: Cell): C
 }
 
 export function nextRow(rule: number, row: Cell[]): Cell[] {
+  const safeRule = clampRule(rule);
   return row.map((center, index) => {
     const left = row[index - 1] ?? 0;
     const right = row[index + 1] ?? 0;
-    return nextCell(rule, left, center, right);
+    const neighborhood = (left << 2) | (center << 1) | right;
+    return ((safeRule >> neighborhood) & 1) as Cell;
   });
 }
 
