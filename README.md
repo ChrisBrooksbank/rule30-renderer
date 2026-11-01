@@ -37,6 +37,10 @@ This app lets you watch it grow live, switch to any of the other 255 rules, thro
 
 ---
 
+## Try it
+
+**Live:** [rule30-renderer.netlify.app](https://rule30-renderer.netlify.app)
+
 ## Run it
 
 ```bash
